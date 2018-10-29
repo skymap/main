@@ -22,8 +22,9 @@ class sky:
         self.font = ImageFont.truetype(self.font_name, int(r * 0.03))
         self.img = Image.new('RGB', (r * 2, r * 2), self.color['white'])
         self.draw = ImageDraw.Draw(self.img)
-        self.star_r = []
-        for i in range(len(self.star_r16)):
+        l = len(self.star_r16)
+        self.star_r = list(range(l))
+        for i in range(l):
             self.star_r.append(self.star_r16[i] * r * 0.00004)
 
     def save_img(self, r=600, prefix='sky'):
@@ -41,7 +42,7 @@ class sky:
             delta = float(d[2])
             mag = int(d[3])
             if self.in_alpha(alpha) and self.in_delta(delta) and mag < self.mag_max:
-                r = self.star_r[mag]
+                r = self.star_r16[mag]
                 x, y = self.xy(math.radians(alpha), math.radians(delta))
                 self.draw.ellipse((x - r, y - r, x + r, y + r), self.color['black'])
 
@@ -74,9 +75,9 @@ class sky:
                 self.draw_alpha_line(alpha, 'gray')
 
     def draw_alpha_line(self, alpha=0, color_name=''):
-        for delta_d in range(181):
-            delta1 = delta_d - 90
-            delta2 = delta_d - 89
+        for delta_d in range(1448):
+            delta1 = delta_d * 0.125 - 90
+            delta2 = delta_d * 0.125 - 89.875
             if delta1 >= self.delta_min and delta2 <= self.delta_max:
                 x1, y1 = self.xy(alpha, math.radians(delta1))
                 x2, y2 = self.xy(alpha, math.radians(delta2))
@@ -112,7 +113,7 @@ class sky:
     def draw_legend(self):
         self.draw.rectangle((self.image_r * 0.02, self.image_r * 1.88, self.mag_max * self.image_r * 0.06 + self.image_r * 0.04, self.image_r * 1.98), self.color['light_gray'])
         for i in range(self.mag_max):
-            r = self.star_r[i]
+            r = self.star_r16[i]
             x = i * self.image_r * 0.06 + self.image_r * 0.06
             y = self.image_r * 1.95
             self.draw.ellipse((x - r, y - r, x + r, y + r), self.color['black'])
