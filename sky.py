@@ -1,17 +1,28 @@
-import math, svgwrite
+import math, svgwrite, sys, time
 
 
 class Sky():
+    prefix = 'tyc'
+    font_size = 12
     font_family = 'monospace'
     star_r = [255, 203, 162, 129, 103, 82, 65, 52, 41, 33, 26, 21, 17, 13, 11, 8]
     area_l2 = [3, 9, 15, 21, 27, 32, 36, 40, 43, 45, 47, 48]
     f1 = {}
     f2 = {}
-    hip = {}
+    star = {}
     line = []
-            
-    def init_area(self, pid=0, alpha_min=0, alpha_center=0, alpha_max=360, delta_min=0, delta_center=90, delta_max=90, x=0.9, mag_max=6, r=400):
-        self.g = svgwrite.Drawing('svg\skymap_' + str(int(pid)) + '_' + str(int(alpha_center)) + '_' + str(int(delta_center)) + '.svg', (r * 2, r * 2), profile='tiny', debug=False)
+
+    def __init__(self, r=400):
+        self.time_start = time.time()
+        self.image_r = r
+        for i in range(16):
+            if i < 9:
+                self.star_r[i] = self.star_r[i] * r * 0.000045
+            else:
+                self.star_r[i] = self.star_r[8]
+
+    def init_area(self, fid=0, alpha_min=0, alpha_center=0, alpha_max=360, delta_min=0, delta_center=90, delta_max=90, x=0.9, mag_max=6):
+        self.g = svgwrite.Drawing('svg\\' + self.prefix + '{:03}'.format(fid) + '.svg', (self.image_r * 2, self.image_r * 2), profile='tiny', debug=False)
         self.alpha0 = math.radians(alpha_center)
         self.delta0 = math.radians(delta_center)
         self.alpha_center = alpha_center
@@ -21,14 +32,8 @@ class Sky():
         self.alpha_min = alpha_min
         self.delta_min = delta_min
         self.mag_max = mag_max
-        self.image_r = r
-        self.sphere_r = r * x
-        self.font_r = r * 0.03
-        self.font_size = str(int(self.font_r)) + 'px'
-
-    def init_star_r(self, x=0.01):
-        for i in range(16):
-            self.star_r[i] = self.star_r[i] * x
+        self.sphere_r = self.image_r * x
+        self.g.add(self.g.rect((0, 0), (self.image_r * 2, self.image_r * 2), fill='none', stroke='black', stroke_width='2'))
 
     def read_frame(self):
         r = open('frame.csv', 'r')
@@ -59,20 +64,29 @@ class Sky():
             d = row.split(',')
             self.line.append([float(d[1]), float(d[2]), float(d[3]), float(d[4])])
 
-    def read_hip(self):
+    def read_star(self, tyc=False):
         r = open('hip_basic.csv', 'r')
         src = r.read()
         r.close
         rows = src.split('\n')
         for row in rows:
             d = row.split(',')
-            self.hip[d[0]] = [float(d[1]), float(d[2]), int(d[3])]
+            self.star[d[0]] = [float(d[1]), float(d[2]), int(d[3])]
+        if tyc:
+            r = open('tyc_basic.csv', 'r')
+            src = r.read()
+            r.close
+            rows = src.split('\n')
+            for row in rows:
+                d = row.split(',')
+                k = d[0] + '_' + d[1] + '_' + d[2]
+                self.star[k] = [float(d[3]), float(d[4]), int(d[5])]
 
     def save_img(self):
         self.g.save()
 
-    def draw_star_hip(self):
-        for v in self.hip.values():
+    def draw_star(self):
+        for v in self.star.values():
             alpha = v[0]
             delta = v[1]
             mag = v[2]
@@ -108,7 +122,7 @@ class Sky():
                 p.append([x, y])
         x, y = self.xy(alpha, math.radians(self.delta_max))
         p.append([x, y])
-        self.g.add(self.g.polyline(p, fill='none', stroke=color, stroke_width='1'))
+        self.g.add(self.g.polyline(p, fill='none', stroke=color, stroke_width='1', stroke_opacity='0.5'))
 
     def draw_alpha_text(self, d=15):
         delta_str = math.radians(self.delta_max) if self.delta_min < 0 else math.radians(self.delta_min)
@@ -117,7 +131,7 @@ class Sky():
             if self.in_alpha(alpha):
                 str_alpha = self.str_hh(alpha) if d >= 15 else self.str_hhmm(alpha)
                 x, y = self.xy(math.radians(alpha), delta_str)
-                self.g.add(self.g.text(str_alpha, (x - self.font_r * 0.6, y + self.font_r), fill='black', font_size=self.font_size, font_family=self.font_family))
+                self.g.add(self.g.text(str_alpha, (x, y), fill='gray', fill_opacity='0.5', font_size=self.font_size, font_family=self.font_family))
 
     def draw_delta_lines(self, d=10):
         for delta_i in range(int(180 / d) + 1):
@@ -136,16 +150,16 @@ class Sky():
                 p.append([x, y])
         x, y = self.xy(math.radians(self.alpha_max), delta)
         p.append([x, y])
-        self.g.add(self.g.polyline(p, fill='none', stroke=color, stroke_width='1'))
+        self.g.add(self.g.polyline(p, fill='none', stroke=color, stroke_width='1', stroke_opacity='0.5'))
 
     def draw_delta_text(self, d=10):
         alpha_str = math.radians(self.alpha_max)
         for delta_i in range(int(180 / d) + 1):
             delta = delta_i * d - 90
             if self.in_delta(delta):
-                str_delta = '{:+02}'.format(delta) + '\u00b0'
+                str_delta = self.str_deg(delta)
                 x, y = self.xy(alpha_str, math.radians(delta))
-                self.g.add(self.g.text(str_delta, (x - self.font_r * 0.6, y - self.font_r * 0.2), fill='black', font_size=self.font_size, font_family=self.font_family))
+                self.g.add(self.g.text(str_delta, (x, y), fill='gray', fill_opacity='0.5', font_size=self.font_size, font_family=self.font_family))
 
     def draw_frame(self, top=True, right=True, bottom=True, left=True):
         if top:self.draw_delta_line(math.radians(self.delta_max), 'black')
@@ -153,12 +167,14 @@ class Sky():
         if bottom:self.draw_delta_line(math.radians(self.delta_min), 'black')
         if left:self.draw_alpha_line(math.radians(self.alpha_max), 'black')
 
-    def draw_frame_link(self, pid, alpha_min, alpha_max, delta_min, delta_max):
+    def draw_frame_link(self, fid, alpha_min, alpha_max, delta_min, delta_max):
         p = []
         alpha_min_rad = math.radians(alpha_min)
         alpha_max_rad = math.radians(alpha_max)
         delta_min_rad = math.radians(delta_min)
         delta_max_rad = math.radians(delta_max)
+        x, y = self.xy((alpha_min_rad + alpha_max_rad) / 2, (delta_min_rad + delta_max_rad) / 2)
+        self.g.add(self.g.text(str(fid), (x, y), fill='blue', fill_opacity='0.5', font_size=self.font_size, font_family=self.font_family))
         x, y = self.xy(alpha_min_rad, delta_min_rad)
         p.append([x, y])
         for alpha_d in range(2881):
@@ -187,17 +203,62 @@ class Sky():
             if delta > delta_min and delta < delta_max:
                 x, y = self.xy(alpha_min_rad, math.radians(delta))
                 p.append([x, y])
-        link = self.g.add(self.g.a('skymap_' + str(int(pid)) + '_' + str(int((alpha_max + alpha_min) / 2)) + '_' + str(int((delta_max + delta_min) / 2)) + '.svg', target='_self'))
-        link.add(self.g.polygon(p, stroke='blue', stroke_opacity='0.5', stroke_width='0.5', fill='white', fill_opacity='0'))
+        link = self.g.add(self.g.a(self.prefix + '{:03}'.format(fid) + '.svg', target='_self'))
+        link.add(self.g.polygon(p, stroke='blue', stroke_opacity='0.5', stroke_width='0.5', fill='blue', fill_opacity='0'))
+
+    def draw_header_link(self, fid, l):
+        if l == 0 or l == 1:
+            v = self.fs
+            text = 'No.1 ' + self.str_hh(v[1]) + ' ' + self.str_hh(v[3]) + ' ' + self.str_deg(v[4]) + self.str_deg(v[6])
+            if l == 0:
+                self.g.add(self.g.text('> ' + text, (self.font_size, self.font_size * 2), fill='black', font_size=self.font_size, font_family=self.font_family))
+            else:
+                link = self.g.add(self.g.a(self.prefix + '001.svg', target='_self'))
+                link.add(self.g.text(text, (self.font_size, self.font_size * 2), fill='black', font_size=self.font_size, font_family=self.font_family))
+            v = self.fn
+            text = 'No.2 ' + self.str_hh(v[1]) + ' ' + self.str_hh(v[3]) + ' ' + self.str_deg(v[4]) + self.str_deg(v[6])
+            if l == 1:
+                self.g.add(self.g.text('> ' + text, (self.font_size, self.font_size * 3), fill='black', font_size=self.font_size, font_family=self.font_family))
+            else:
+                link = self.g.add(self.g.a(self.prefix + '002.svg', target='_self'))
+                link.add(self.g.text(text, (self.font_size, self.font_size * 3), fill='black', font_size=self.font_size, font_family=self.font_family))
+        elif l == 2:
+            v = self.f1[fid]
+            text = '> No.' + str(fid) + ' ' + self.str_hhmm(v[1]) + ' ' + self.str_hhmm(v[3]) + ' ' + self.str_deg(v[4]) + self.str_deg(v[6])
+            self.g.add(self.g.text(text, (self.font_size, self.font_size * 3), fill='black', font_size=self.font_size, font_family=self.font_family))
+            pid = v[0]
+            if pid == 1:
+                v = self.fs
+            elif pid == 2:
+                v = self.fn
+            text = 'No.' + str(pid) + ' ' + self.str_hh(v[1]) + ' ' + self.str_hh(v[3]) + ' ' + self.str_deg(v[4]) + self.str_deg(v[6])
+            link = self.g.add(self.g.a(self.prefix + '{:03}'.format(pid) + '.svg', target='_self'))
+            link.add(self.g.text(text, (self.font_size, self.font_size * 2), fill='black', font_size=self.font_size, font_family=self.font_family))
+        elif l == 3:
+            v = self.f2[fid]
+            text = '>> No.' + str(fid) + ' ' + self.str_hhmm(v[1]) + ' ' + self.str_hhmm(v[3]) + ' ' + self.str_deg(v[4]) + self.str_deg(v[6])
+            self.g.add(self.g.text(text, (self.font_size, self.font_size * 4), fill='black', font_size=self.font_size, font_family=self.font_family))
+            pid = v[0]
+            v = self.f1[pid]
+            text = '> No.' + str(pid) + ' ' + self.str_hhmm(v[1]) + ' ' + self.str_hhmm(v[3]) + ' ' + self.str_deg(v[4]) + self.str_deg(v[6])
+            link = self.g.add(self.g.a(self.prefix + '{:03}'.format(pid) + '.svg', target='_self'))
+            link.add(self.g.text(text, (self.font_size, self.font_size * 3), fill='black', font_size=self.font_size, font_family=self.font_family))
+            pid = v[0]
+            if pid == 1:
+                v = self.fs
+            elif pid == 2:
+                v = self.fn
+            text = 'No.' + str(pid) + ' ' + self.str_hh(v[1]) + ' ' + self.str_hh(v[3]) + ' ' + self.str_deg(v[4]) + self.str_deg(v[6])
+            link = self.g.add(self.g.a(self.prefix + '{:03}'.format(pid) + '.svg', target='_self'))
+            link.add(self.g.text(text, (self.font_size, self.font_size * 2), fill='black', font_size=self.font_size, font_family=self.font_family))
 
     def draw_legend(self):
-        # self.g.add(self.g.rect((self.image_r * 0.02, self.image_r * 1.88), (self.mag_max * self.image_r * 0.06 + self.image_r * 0.04, self.image_r * 0.1), fill='silver', fill_opacity='0.5', stroke='none'))
-        for i in range(self.mag_max):
-            x = i * self.image_r * 0.06 + self.image_r * 0.07
-            y = self.image_r * 1.95
+        for i in range(self.mag_max if self.mag_max < 9 else 9):
+            x = i * self.image_r * 0.06 + self.star_r[0] * 3
+            y = self.image_r * 2 - self.star_r[0] * 3
             self.g.add(self.g.add(self.g.circle((x, y), self.star_r[i], fill='black', stroke='none')))
             s = str(i + 1)
-            self.g.add(self.g.text(s, (x - self.font_r * 0.2, y - self.font_r * 0.8), fill='black', font_size=self.font_size, font_family=self.font_family))
+            self.g.add(self.g.text(s, (x - self.font_size * 0.25, y - self.star_r[0] - self.font_size * 0.5), fill='black', font_size=self.font_size, font_family=self.font_family))
 
     def in_alpha(self, alpha=0):
         return True if alpha >= self.alpha_min and alpha <= self.alpha_max else False
@@ -215,8 +276,18 @@ class Sky():
         m = round((hf - h) * 60)
         return '{:02}'.format(h) + 'h' + '{:02}'.format(m) + 'm'
 
+    def str_deg(self, deg=0):
+        return '{:+02}'.format(deg) + '\u00b0'
+
     def xy(self, alpha, delta):
         k = self.sphere_r / (1 + math.sin(self.delta0) * math.sin(delta) + math.cos(self.delta0) * math.cos(delta) * math.cos(alpha - self.alpha0))
         x = -k * math.cos(delta) * math.sin(alpha - self.alpha0) + self.image_r
         y = -k * (math.cos(self.delta0) * math.sin(delta) - math.sin(self.delta0) * math.cos(delta) * math.cos(alpha - self.alpha0)) + self.image_r
         return x, y
+
+    def print_progress(self, i=0, n=0):
+        sys.stdout.write('\r%d/%d' % (i, n))
+        sys.stdout.flush()
+
+    def print_time(self):
+        print('\n{:.3f}'.format(time.time() - self.time_start) + '[s]')
