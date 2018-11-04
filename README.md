@@ -1,2 +1,2 @@
-# map
+# main
 skymap main repository
