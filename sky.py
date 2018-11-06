@@ -141,20 +141,24 @@ class Sky():
                 x, y = self.xy(math.radians(alpha), math.radians(delta))
                 self.g.add(self.g.circle((x, y), self.star_r[mag], fill='black', stroke='white', stroke_width='0.25'))
 
-    def draw_star_tyc(self, fid):
-        for k, p in self.star_hip.items():
-            for v in p.values():
+    def draw_star_hip(self):
+        for i in range(16):
+            if len(self.star_hip[i]) == 0:continue
+            for v in self.star_hip[i].values():
                 alpha = v[0]
                 delta = v[1]
                 if self.in_alpha(alpha) and self.in_delta(delta):
                     x, y = self.xy(math.radians(alpha), math.radians(delta))
-                    self.g.add(self.g.circle((x, y), self.star_r[k], fill='black', stroke='white', stroke_width='0.25'))
-        for k, p in self.star_tyc[fid].items():
-            for v in p.values():
+                    self.g.add(self.g.circle((x, y), self.star_r[i], fill='black', stroke='white', stroke_width='0.25'))
+
+    def draw_star_tyc(self, fid):
+        for i in range(16):
+            if len(self.star_tyc[fid][i]) == 0:continue
+            for v in self.star_tyc[fid][i].values():
                 alpha = v[0]
                 delta = v[1]
                 x, y = self.xy(math.radians(alpha), math.radians(delta))
-                self.g.add(self.g.circle((x, y), self.star_r[k], fill='black', stroke='white', stroke_width='0.25'))
+                self.g.add(self.g.circle((x, y), self.star_r[i], fill='black', stroke='white', stroke_width='0.25'))
 
     def draw_constellation_lines(self):
         for v in self.line:
@@ -350,6 +354,11 @@ class Sky():
 
     def in_delta(self, delta=0):
         return True if delta >= self.delta_min and delta <= self.delta_max else False
+
+    def id_frame_tyc(self, alpha, delta):
+        for k, v in self.f3.items():
+            if alpha >= v[1] and alpha < v[3] and delta >= v[4] and delta < v[6]:
+                return k
 
     def str_hh(self, deg=0):
         h = int(deg / 15)
