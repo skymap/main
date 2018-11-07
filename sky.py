@@ -105,21 +105,21 @@ class Sky():
                 self.star[k] = [float(d[3]), float(d[4]), int(d[5])]
 
     def read_star_tyc(self):
-        self.star_hip = {}
-        for i in range(16):
-            self.star_hip[i] = {}
+        self.star_tyc = {}
+        for i in range(9537):
+            self.star_tyc[i] = {}
+            for j in range(16):
+                self.star_tyc[i][j] = {}
         r = open('hip_basic.csv', 'r')
         src = r.read()
         r.close
         rows = src.split('\n')
         for row in rows:
             d = row.split(',')
-            self.star_hip[int(d[3])][d[0]] = [float(d[1]), float(d[2])]
-        self.star_tyc = {}
-        for i in range(9537):
-            self.star_tyc[i] = {}
-            for j in range(16):
-                self.star_tyc[i][j] = {}
+            alpha = float(d[1])
+            delta = float(d[2])
+            fid = self.id_frame_tyc(alpha, delta) - 1
+            self.star_tyc[fid][int(d[3])][d[0]] = [alpha, delta]
         r = open('tyc_basic.csv', 'r')
         src = r.read()
         r.close
@@ -140,16 +140,6 @@ class Sky():
             if self.in_alpha(alpha) and self.in_delta(delta) and mag < self.mag_max:
                 x, y = self.xy(math.radians(alpha), math.radians(delta))
                 self.g.add(self.g.circle((x, y), self.star_r[mag], fill='black', stroke='white', stroke_width='0.25'))
-
-    def draw_star_hip(self):
-        for i in range(16):
-            if len(self.star_hip[i]) == 0:continue
-            for v in self.star_hip[i].values():
-                alpha = v[0]
-                delta = v[1]
-                if self.in_alpha(alpha) and self.in_delta(delta):
-                    x, y = self.xy(math.radians(alpha), math.radians(delta))
-                    self.g.add(self.g.circle((x, y), self.star_r[i], fill='black', stroke='white', stroke_width='0.25'))
 
     def draw_star_tyc(self, fid):
         for i in range(16):

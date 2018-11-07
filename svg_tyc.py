@@ -12,7 +12,6 @@ for k, v in s.f3.items():
     s.draw_alpha_lines(d)
     s.draw_delta_lines(1)
     s.draw_frame(True, True, True, True)
-    s.draw_star_hip()
     s.draw_star_tyc(int(k - 1))
     s.draw_legend(True)
     s.draw_alpha_text(d)
